@@ -1,4 +1,4 @@
-// Material configuration for easier maintenance
+// Material configuration (weights only, no material costs)
 const MATERIALS = {
   base: [
     { name: "Screw Jacks", weightPerUnit: 14 },
@@ -37,11 +37,16 @@ window.onload = function () {
     const width = parseFloat(document.getElementById("width").value);
     const length = parseFloat(document.getElementById("length").value);
     const height = parseFloat(document.getElementById("height").value);
+    const manhourRate = parseFloat(document.getElementById("manhourRate").value) || 0;
     const includeStair = document.getElementById("stairTower").checked;
 
     // Validate inputs
     if (isNaN(width) || isNaN(length) || isNaN(height) || width <= 0 || length <= 0 || height <= 0) {
       showError("Please enter valid positive numbers for width, length, and height.");
+      return;
+    }
+    if (!isNaN(manhourRate) && manhourRate < 0) {
+      showError("Manhour rate cannot be negative.");
       return;
     }
 
@@ -121,11 +126,11 @@ window.onload = function () {
       <h3>Total Scaffold Weight: ${totalWeight.toFixed(2)} lbs</h3>
     `;
 
-    // Add addon output (from addons_final_token_based.js)
-    addAddonOutput(materials, materialList);
+    // Add addon output (includes labor cost if manhour rate provided)
+    addAddonOutput(materials, materialList, manhourRate);
 
     // Save calculation
-    saveCalculation(materials, width, length, height, includeStair);
+    saveCalculation(materials, width, length, height, includeStair, manhourRate);
   });
 
   // Add reset button
@@ -142,7 +147,7 @@ window.onload = function () {
   const saveButton = document.createElement("button");
   saveButton.textContent = "Save Calculation";
   resetButton.insertAdjacentElement("afterend", saveButton);
-  saveButton.addEventListener("click", () => saveCalculation(materials, document.getElementById("width").value, document.getElementById("length").value, document.getElementById("height").value, document.getElementById("stairTower").checked));
+  saveButton.addEventListener("click", () => saveCalculation(materials, document.getElementById("width").value, document.getElementById("length").value, document.getElementById("height").value, document.getElementById("stairTower").checked, document.getElementById("manhourRate").value));
 
   // Add load button
   const loadButton = document.createElement("button");
@@ -165,8 +170,8 @@ window.onload = function () {
   }
 
   // Save calculation to localStorage
-  function saveCalculation(materials, width, length, height, includeStair) {
-    const calculation = { materials, width, length, height, includeStair, timestamp: new Date().toISOString() };
+  function saveCalculation(materials, width, length, height, includeStair, manhourRate) {
+    const calculation = { materials, width, length, height, includeStair, manhourRate, timestamp: new Date().toISOString() };
     localStorage.setItem("lastCalculation", JSON.stringify(calculation));
   }
 
@@ -174,11 +179,12 @@ window.onload = function () {
   function loadCalculation() {
     const saved = localStorage.getItem("lastCalculation");
     if (saved) {
-      const { materials, width, length, height, includeStair } = JSON.parse(saved);
+      const { materials, width, length, height, includeStair, manhourRate } = JSON.parse(saved);
       document.getElementById("width").value = width;
       document.getElementById("length").value = length;
       document.getElementById("height").value = height;
       document.getElementById("stairTower").checked = includeStair;
+      document.getElementById("manhourRate").value = manhourRate || "";
 
       let totalWeight = 0;
       materialList.innerHTML = `
@@ -211,7 +217,7 @@ window.onload = function () {
         </table>
         <h3>Total Scaffold Weight: ${totalWeight.toFixed(2)} lbs</h3>
       `;
-      addAddonOutput(materials, materialList);
+      addAddonOutput(materials, materialList, manhourRate);
     } else {
       showError("No saved calculation found.");
     }
